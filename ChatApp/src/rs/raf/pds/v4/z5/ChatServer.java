@@ -16,9 +16,11 @@ import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
+import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
 import rs.raf.pds.v4.z5.messages.Login;
 import rs.raf.pds.v4.z5.messages.WhoRequest;
+import rs.raf.pds.v4.z5.messages.WhoRoomRequest;
 
 
 public class ChatServer implements Runnable{
@@ -89,6 +91,12 @@ public class ChatServer implements Runnable{
 					connection.sendTCP(listUsers);
 					return;
 				}
+				
+				if (object instanceof WhoRoomRequest) {
+					ListRooms listRooms = new ListRooms(getAllRooms());
+					connection.sendTCP(listRooms);
+					return;
+				}
 			}
 			
 			public void disconnected(Connection connection) {
@@ -110,6 +118,17 @@ public class ChatServer implements Runnable{
 		
 		return users;
 	}
+	
+	String[] getAllRooms() {
+		String[] rooms = new String[chatRooms.size()];
+		int i=0;
+		for (String room: chatRooms.keySet()) {
+			rooms[i] = room;
+			i++;
+		}
+		return rooms;
+	}
+	
 	void newUserLogged(Login loginMessage, Connection conn) {
 		userConnectionMap.put(loginMessage.getUserName(), conn);
 		connectionUserMap.put(conn, loginMessage.getUserName());

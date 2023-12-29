@@ -12,10 +12,12 @@ import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
+import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
 import rs.raf.pds.v4.z5.messages.Login;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.WhoRequest;
+import rs.raf.pds.v4.z5.messages.WhoRoomRequest;
 
 public class ChatClient implements Runnable{
 
@@ -58,6 +60,12 @@ public class ChatClient implements Runnable{
 				if (object instanceof ListUsers) {
 					ListUsers listUsers = (ListUsers)object;
 					showOnlineUsers(listUsers.getUsers());
+					return;
+				}
+				
+				if (object instanceof ListRooms) {
+					ListRooms listRooms = (ListRooms)object;
+					showRooms(listRooms.getRooms());
 					return;
 				}
 				
@@ -108,6 +116,15 @@ public class ChatClient implements Runnable{
 			System.out.printf((i==users.length-1?"\n":", "));
 		}
 	}
+	
+	private void showRooms(String[] rooms) {
+		System.out.print("Server:");
+		for (int i=0; i<rooms.length; i++) {
+			String room = rooms[i];
+			System.out.print(room);
+			System.out.printf((i==rooms.length-1?"\n":", "));
+		}
+	}
 	public void start() throws IOException {
 		client.start();
 		connect();
@@ -146,6 +163,9 @@ public class ChatClient implements Runnable{
 	            	}
 	            	else if ("WHO".equalsIgnoreCase(userInput)){
 	            		client.sendTCP(new WhoRequest());
+	            	}
+	            	else if ("ALL ROOMS".equalsIgnoreCase(userInput)){
+	            		client.sendTCP(new WhoRoomRequest());
 	            	}
 	            	else if (userInput.startsWith("PRIVATE ")) {
 	                     // Primer: PRIVATE imePrihvatioca tekst poruke
