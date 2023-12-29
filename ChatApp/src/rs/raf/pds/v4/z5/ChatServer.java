@@ -15,6 +15,7 @@ import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
+import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
 import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
@@ -85,6 +86,14 @@ public class ChatServer implements Runnable{
 				    showTextToOne("Room "+roomName+" created!",connection);
 				    return;
 				}
+				
+				if (object instanceof JoinRoomMessage) {
+					JoinRoomMessage joinRoomMessage = (JoinRoomMessage) object;
+				    String roomName = joinRoomMessage.getRoomName();
+				    newJoinToRoom(joinRoomMessage,connection);
+				    showTextToOne("User "+connectionUserMap.get(connection)+" joined room "+ roomName,connection);
+				    return;
+				}
 
 				if (object instanceof WhoRequest) {
 					ListUsers listUsers = new ListUsers(getAllUsers());
@@ -129,16 +138,23 @@ public class ChatServer implements Runnable{
 		return rooms;
 	}
 	
-	void newUserLogged(Login loginMessage, Connection conn) {
+	private void newUserLogged(Login loginMessage, Connection conn) {
 		userConnectionMap.put(loginMessage.getUserName(), conn);
 		connectionUserMap.put(conn, loginMessage.getUserName());
 		privateMessages.put(loginMessage.getUserName(), new LinkedList<>());
 		showTextToAll("User "+loginMessage.getUserName()+" has connected!", conn);
 	}
 	
-	void newRoomCreated(CreateRoomMessage createRoomMessage,Connection conn) {
+	private void newRoomCreated(CreateRoomMessage createRoomMessage,Connection conn) {
 		ChatRoom newChatRoom = new ChatRoom(createRoomMessage.getRoomName());
 		chatRooms.put(createRoomMessage.getRoomName(),newChatRoom );
+	}
+	
+	private void newJoinToRoom(JoinRoomMessage joinRoomMessage,Connection conn) {
+		String roomName = joinRoomMessage.getRoomName();
+		String userName = connectionUserMap.get(conn);
+		ChatRoom room = chatRooms.get(roomName);
+		room.addUserConnection(userName, conn);
 	}
 	
 	private void broadcastChatMessage(ChatMessage message, Connection exception) {

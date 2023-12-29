@@ -11,6 +11,7 @@ import com.esotericsoftware.kryonet.Listener;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
+import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
 import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
@@ -176,6 +177,16 @@ public class ChatClient implements Runnable{
 	                         client.sendTCP(new PrivateMessage(recipient, userName, messageText));
 	                     } else {
 	                         System.out.println("Invalid private message format. Use: PRIVATE recipient message");
+	                     }
+	                }
+	            	else if (userInput.startsWith("JOIN ")) {
+	                     // Primer: JOIN imeSobe
+	                     String[] parts = userInput.split(" ", 2);
+	                     if (parts.length == 2) {
+	                         String room = parts[1];
+	                         client.sendTCP(new JoinRoomMessage(room));
+	                     } else {
+	                         System.out.println("Invalid join room message format. Use: JOIN roomName");
 	                     }
 	                }
 	            	else if (userInput.startsWith("CREATE ROOM ")) {
