@@ -10,7 +10,9 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 
+import rs.raf.pds.v4.z5.extra.ChatRoom;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
+import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
@@ -30,6 +32,8 @@ public class ChatServer implements Runnable{
 	ConcurrentMap<Connection, String> connectionUserMap = new ConcurrentHashMap<Connection, String>();
 	
 	ConcurrentMap<String, Queue<PrivateMessage>> privateMessages = new ConcurrentHashMap<>();
+	
+	ConcurrentMap<String, ChatRoom> chatRooms = new ConcurrentHashMap<>();
 	
 	public ChatServer(int portNumber) {
 		this.server = new Server();
@@ -71,6 +75,14 @@ public class ChatServer implements Runnable{
 				    sendPrivateChatMessage(privateMessage,connection);
 				    return;
 				}
+				
+				if (object instanceof CreateRoomMessage) {
+					CreateRoomMessage createRoomMessage = (CreateRoomMessage) object;
+				    String roomName = createRoomMessage.getRoomName();
+				    newRoomCreated(createRoomMessage,connection);
+				    showTextToOne("Room "+roomName+" created!",connection);
+				    return;
+				}
 
 				if (object instanceof WhoRequest) {
 					ListUsers listUsers = new ListUsers(getAllUsers());
@@ -104,6 +116,12 @@ public class ChatServer implements Runnable{
 		privateMessages.put(loginMessage.getUserName(), new LinkedList<>());
 		showTextToAll("User "+loginMessage.getUserName()+" has connected!", conn);
 	}
+	
+	void newRoomCreated(CreateRoomMessage createRoomMessage,Connection conn) {
+		ChatRoom newChatRoom = new ChatRoom(createRoomMessage.getRoomName());
+		chatRooms.put(createRoomMessage.getRoomName(),newChatRoom );
+	}
+	
 	private void broadcastChatMessage(ChatMessage message, Connection exception) {
 		for (Connection conn: userConnectionMap.values()) {
 			if (conn.isConnected() && conn != exception)
@@ -123,6 +141,12 @@ public class ChatServer implements Runnable{
 				conn.sendTCP(new InfoMessage(txt));
 		}
 	}
+	
+	private void showTextToOne(String txt, Connection connection) {
+		System.out.println(txt);
+		connection.sendTCP(new InfoMessage(txt));
+	}
+	
 	public void start() throws IOException {
 		server.start();
 		server.bind(portNumber);

@@ -9,6 +9,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 
 import rs.raf.pds.v4.z5.messages.ChatMessage;
+import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
 import rs.raf.pds.v4.z5.messages.ListUsers;
@@ -146,8 +147,8 @@ public class ChatClient implements Runnable{
 	            	else if ("WHO".equalsIgnoreCase(userInput)){
 	            		client.sendTCP(new WhoRequest());
 	            	}
-	            	 else if (userInput.startsWith("PRIVATE ")) {
-	                     // Example: PRIVATE recipientName your private message
+	            	else if (userInput.startsWith("PRIVATE ")) {
+	                     // Primer: PRIVATE imePrihvatioca tekst poruke
 	                     String[] parts = userInput.split(" ", 3);
 	                     if (parts.length == 3) {
 	                         String recipient = parts[1];
@@ -156,7 +157,17 @@ public class ChatClient implements Runnable{
 	                     } else {
 	                         System.out.println("Invalid private message format. Use: PRIVATE recipient message");
 	                     }
-	                 }
+	                }
+	            	else if (userInput.startsWith("CREATE ROOM ")) {
+	                     // Primer: CREATE ROOM imeSobe
+	                     String[] parts = userInput.split(" ", 3);
+	                     if (parts.length == 3) {
+	                         String roomName = parts[2];
+	                         client.sendTCP(new CreateRoomMessage(roomName));
+	                     } else {
+	                         System.out.println("Invalid create room format. Use: CREATE ROOM roomName");
+	                     }
+	                }
 	            	else {
 	            		ChatMessage message = new ChatMessage(userName, userInput);
 	            		client.sendTCP(message);
