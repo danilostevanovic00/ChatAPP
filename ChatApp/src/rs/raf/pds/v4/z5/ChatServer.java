@@ -15,6 +15,7 @@ import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
+import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
 import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
 import rs.raf.pds.v4.z5.messages.ListRooms;
@@ -79,11 +80,19 @@ public class ChatServer implements Runnable{
 				    return;
 				}
 				
+				if (object instanceof InviteToRoomMessage) {
+					InviteToRoomMessage inviteToRoomMessage = (InviteToRoomMessage) object;
+				    newInviteToRoom(inviteToRoomMessage,connection);
+				    return;
+				}
+				
 				if (object instanceof CreateRoomMessage) {
 					CreateRoomMessage createRoomMessage = (CreateRoomMessage) object;
 				    String roomName = createRoomMessage.getRoomName();
 				    newRoomCreated(createRoomMessage,connection);
 				    showTextToOne("Room "+roomName+" created!",connection);
+				    newJoinToRoom(new JoinRoomMessage(roomName),connection);
+				    showTextToOne("User "+connectionUserMap.get(connection)+" joined room "+ roomName,connection);
 				    return;
 				}
 				
@@ -155,6 +164,13 @@ public class ChatServer implements Runnable{
 		String userName = connectionUserMap.get(conn);
 		ChatRoom room = chatRooms.get(roomName);
 		room.addUserConnection(userName, conn);
+	}
+	
+	private void newInviteToRoom(InviteToRoomMessage inviteToRoomMessage,Connection conn) {
+		String roomName = inviteToRoomMessage.getRoomName();
+		String invited = inviteToRoomMessage.getInvited();
+		String userThatInvited = connectionUserMap.get(conn);
+		showTextToOne("User "+userThatInvited+" inveted you to room "+roomName,userConnectionMap.get(invited));
 	}
 	
 	private void broadcastChatMessage(ChatMessage message, Connection exception) {
