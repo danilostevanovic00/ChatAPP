@@ -3,6 +3,7 @@ package rs.raf.pds.v4.z5;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -20,6 +21,7 @@ import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
 import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
+import rs.raf.pds.v4.z5.messages.ListFiveAtJoin;
 import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
 import rs.raf.pds.v4.z5.messages.Login;
@@ -117,6 +119,7 @@ public class ChatServer implements Runnable{
 				    String roomName = joinRoomMessage.getRoomName();
 				    newJoinToRoom(joinRoomMessage,connection);
 				    showTextToOne("User "+connectionUserMap.get(connection)+" joined room "+ roomName,connection);
+				    connection.sendTCP(new ListFiveAtJoin(getFiveRoomMessages(roomName)));
 				    return;
 				}
 
@@ -149,8 +152,24 @@ public class ChatServer implements Runnable{
 			users[i] = user;
 			i++;
 		}
-		
 		return users;
+	}
+	
+	ChatRoomMessage[] getFiveRoomMessages(String roomName) {
+		ChatRoomMessage[] roomMessages = new ChatRoomMessage[5];
+		ArrayList<ChatRoomMessage> roomMessageList = chatRoomsMessages.get(roomName);
+		List<ChatRoomMessage> listOfFive;
+		if (roomMessageList.size()>5) {
+			listOfFive = roomMessageList.subList(roomMessageList.size()-5, roomMessageList.size());
+		}else {
+			listOfFive = roomMessageList;
+		}
+		int i = 0;
+		for (ChatRoomMessage crm: listOfFive) {
+			roomMessages[i]=crm;
+			i++;
+		}
+		return roomMessages;
 	}
 	
 	String[] getAllRooms() {

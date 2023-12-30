@@ -15,6 +15,7 @@ import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
 import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
+import rs.raf.pds.v4.z5.messages.ListFiveAtJoin;
 import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
 import rs.raf.pds.v4.z5.messages.Login;
@@ -69,6 +70,12 @@ public class ChatClient implements Runnable{
 				if (object instanceof ListRooms) {
 					ListRooms listRooms = (ListRooms)object;
 					showRooms(listRooms.getRooms());
+					return;
+				}
+				
+				if (object instanceof ListFiveAtJoin) {
+					ListFiveAtJoin listFiveMessages = (ListFiveAtJoin)object;
+					showLastFiveMessages(listFiveMessages);
 					return;
 				}
 				
@@ -133,6 +140,20 @@ public class ChatClient implements Runnable{
 			String room = rooms[i];
 			System.out.print(room);
 			System.out.printf((i==rooms.length-1?"\n":", "));
+		}
+	}
+	
+	private void showLastFiveMessages(ListFiveAtJoin listOfFive) {
+		System.out.print("Previous messages from room: \n");
+		ChatRoomMessage[] chatRoomMessages = listOfFive.getListFiveAtJoin();
+		if (chatRoomMessages[0]==null) {
+			System.out.print("No previous messages");
+		}else {
+			for (int i = 0; i<5; i++) {
+				String user = chatRoomMessages[i].getUser();
+				String message = chatRoomMessages[i].getMessage();
+				System.out.println(user+" : "+message);
+			}
 		}
 	}
 	public void start() throws IOException {
