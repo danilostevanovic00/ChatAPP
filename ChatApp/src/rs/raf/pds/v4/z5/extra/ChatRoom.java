@@ -24,6 +24,12 @@ public class ChatRoom {
     public ConcurrentMap<String, Connection> getUserConnectionMap() {
         return userConnectionMap;
     }
+    
+    public String getUserByConn(Connection conn) {
+    	String user = connectionUserMap.get(conn);
+    	return user;
+    	
+    }
 
     public ConcurrentMap<Connection, String> getConnectionUserMap() {
         return connectionUserMap;

@@ -9,6 +9,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 
 import rs.raf.pds.v4.z5.messages.ChatMessage;
+import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
@@ -82,6 +83,13 @@ public class ChatClient implements Runnable{
 					showMessage(message.getUser()+"r:"+message.getTxt());
 					return;
 				}
+				
+				if (object instanceof ChatRoomMessage) {
+					ChatRoomMessage message = (ChatRoomMessage)object;
+					showMessage(message.getRoomName()+" from "+message.getUser()+" : "+message.getMessage());
+					return;
+				}
+				
 				if (object instanceof PrivateMessage) {
 					PrivateMessage privateMessage = (PrivateMessage) object;
 				    showPrivateMessage(privateMessage);
@@ -209,6 +217,17 @@ public class ChatClient implements Runnable{
 	                         client.sendTCP(new CreateRoomMessage(roomName));
 	                     } else {
 	                         System.out.println("Invalid create room format. Use: CREATE ROOM roomName");
+	                     }
+	                }
+	            	else if (userInput.startsWith("ROOM ")) {
+	                     // Primer: CREATE ROOM imeSobe
+	                     String[] parts = userInput.split(" ", 3);
+	                     if (parts.length == 3) {
+	                         String roomName = parts[1];
+	                         String message = parts[2];
+	                         client.sendTCP(new ChatRoomMessage(userName,roomName,message));
+	                     } else {
+	                         System.out.println("Invalid chat room message format. Use: ROOM roomName message");
 	                     }
 	                }
 	            	else {

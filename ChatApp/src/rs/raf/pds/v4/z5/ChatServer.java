@@ -1,6 +1,7 @@
 package rs.raf.pds.v4.z5;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,6 +13,7 @@ import com.esotericsoftware.kryonet.Server;
 
 import rs.raf.pds.v4.z5.extra.ChatRoom;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
+import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
@@ -38,6 +40,7 @@ public class ChatServer implements Runnable{
 	ConcurrentMap<String, Queue<PrivateMessage>> privateMessages = new ConcurrentHashMap<>();
 	
 	ConcurrentMap<String, ChatRoom> chatRooms = new ConcurrentHashMap<>();
+	ConcurrentMap<String, ArrayList<ChatRoomMessage>> chatRoomsMessages = new ConcurrentHashMap<>();
 	
 	public ChatServer(int portNumber) {
 		this.server = new Server();
@@ -80,6 +83,17 @@ public class ChatServer implements Runnable{
 				    return;
 				}
 				
+				if (object instanceof ChatRoomMessage) {
+					ChatRoomMessage chatRoomMessage = (ChatRoomMessage) object;
+				    ChatRoom chatRoom = chatRooms.get(chatRoomMessage.getRoomName());
+				    String user = chatRoom.getUserByConn(connection);
+				    if (user != null) {
+				    	sendChatRoomMessage(chatRoomMessage,connection);
+				    	chatRoomsMessages.get(chatRoomMessage.getRoomName()).add(chatRoomMessage);
+				    }
+				    return;
+				}
+				
 				if (object instanceof InviteToRoomMessage) {
 					InviteToRoomMessage inviteToRoomMessage = (InviteToRoomMessage) object;
 				    newInviteToRoom(inviteToRoomMessage,connection);
@@ -93,6 +107,8 @@ public class ChatServer implements Runnable{
 				    showTextToOne("Room "+roomName+" created!",connection);
 				    newJoinToRoom(new JoinRoomMessage(roomName),connection);
 				    showTextToOne("User "+connectionUserMap.get(connection)+" joined room "+ roomName,connection);
+				    chatRoomsMessages.put(roomName, new ArrayList<>());
+				    showTextToOne("Created list for messages for room "+ roomName,connection);
 				    return;
 				}
 				
@@ -175,6 +191,13 @@ public class ChatServer implements Runnable{
 	
 	private void broadcastChatMessage(ChatMessage message, Connection exception) {
 		for (Connection conn: userConnectionMap.values()) {
+			if (conn.isConnected() && conn != exception)
+				conn.sendTCP(message);
+		}
+	}
+	
+	private void sendChatRoomMessage(ChatRoomMessage message, Connection exception) {
+		for (Connection conn: chatRooms.get(message.getRoomName()).getUserConnectionMap().values()) {
 			if (conn.isConnected() && conn != exception)
 				conn.sendTCP(message);
 		}
