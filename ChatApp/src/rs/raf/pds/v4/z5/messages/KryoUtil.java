@@ -20,5 +20,7 @@ public class KryoUtil {
 		kryo.register(ChatRoomMessage.class);
 		kryo.register(ChatRoomMessage[].class);
 		kryo.register(ListFiveAtJoin.class);
+		kryo.register(ListAllFromRoom.class);
+		kryo.register(GetMoreMessagesMesage.class);
 	}
 }

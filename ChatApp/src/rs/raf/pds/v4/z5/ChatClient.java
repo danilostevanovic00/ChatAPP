@@ -11,10 +11,12 @@ import com.esotericsoftware.kryonet.Listener;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
+import rs.raf.pds.v4.z5.messages.GetMoreMessagesMesage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
 import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
+import rs.raf.pds.v4.z5.messages.ListAllFromRoom;
 import rs.raf.pds.v4.z5.messages.ListFiveAtJoin;
 import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
@@ -76,6 +78,12 @@ public class ChatClient implements Runnable{
 				if (object instanceof ListFiveAtJoin) {
 					ListFiveAtJoin listFiveMessages = (ListFiveAtJoin)object;
 					showLastFiveMessages(listFiveMessages);
+					return;
+				}
+				
+				if (object instanceof ListAllFromRoom) {
+					ListAllFromRoom listAllMessages = (ListAllFromRoom)object;
+					showAllMessagesFromRoom(listAllMessages);
 					return;
 				}
 				
@@ -156,6 +164,21 @@ public class ChatClient implements Runnable{
 			}
 		}
 	}
+	
+	private void showAllMessagesFromRoom(ListAllFromRoom listOfAll) {
+		System.out.print("All previous messages from room: \n");
+		ChatRoomMessage[] chatRoomMessages = listOfAll.getListOfAll();
+		if (chatRoomMessages[0]==null) {
+			System.out.print("No previous messages");
+		}else {
+			for (ChatRoomMessage crm :chatRoomMessages) {
+				String user = crm.getUser();
+				String message = crm.getMessage();
+				System.out.println(user+" : "+message);
+			}
+		}
+	}
+	
 	public void start() throws IOException {
 		client.start();
 		connect();
@@ -249,6 +272,16 @@ public class ChatClient implements Runnable{
 	                         client.sendTCP(new ChatRoomMessage(userName,roomName,message));
 	                     } else {
 	                         System.out.println("Invalid chat room message format. Use: ROOM roomName message");
+	                     }
+	                }
+	            	else if (userInput.startsWith("ALL ROOM ")) {
+	                     // Primer: CREATE ROOM imeSobe
+	                     String[] parts = userInput.split(" ", 3);
+	                     if (parts.length == 3) {
+	                         String roomName = parts[2];
+	                         client.sendTCP(new GetMoreMessagesMesage(roomName));
+	                     } else {
+	                         System.out.println("Invalid all msg chat room message format. Use: All ROOM roomName");
 	                     }
 	                }
 	            	else {

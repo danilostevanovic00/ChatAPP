@@ -16,11 +16,13 @@ import rs.raf.pds.v4.z5.extra.ChatRoom;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
+import rs.raf.pds.v4.z5.messages.GetMoreMessagesMesage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
 import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
 import rs.raf.pds.v4.z5.messages.KryoUtil;
+import rs.raf.pds.v4.z5.messages.ListAllFromRoom;
 import rs.raf.pds.v4.z5.messages.ListFiveAtJoin;
 import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
@@ -122,6 +124,13 @@ public class ChatServer implements Runnable{
 				    connection.sendTCP(new ListFiveAtJoin(getFiveRoomMessages(roomName)));
 				    return;
 				}
+				
+				if (object instanceof GetMoreMessagesMesage) {
+					GetMoreMessagesMesage getAllRoomMessage = (GetMoreMessagesMesage) object;
+				    String roomName = getAllRoomMessage.getRoomName();
+				    connection.sendTCP(new ListAllFromRoom(getAllRoomMessages(roomName)));
+				    return;
+				}
 
 				if (object instanceof WhoRequest) {
 					ListUsers listUsers = new ListUsers(getAllUsers());
@@ -167,6 +176,17 @@ public class ChatServer implements Runnable{
 		int i = 0;
 		for (ChatRoomMessage crm: listOfFive) {
 			roomMessages[i]=crm;
+			i++;
+		}
+		return roomMessages;
+	}
+	
+	ChatRoomMessage[] getAllRoomMessages(String roomName) {
+		ChatRoomMessage[] roomMessages = new ChatRoomMessage[chatRoomsMessages.get(roomName).size()];
+		ArrayList<ChatRoomMessage> roomMessageList = chatRoomsMessages.get(roomName);
+		int i = 0;
+		for (ChatRoomMessage crm : roomMessageList) {
+			roomMessages[i]= crm;
 			i++;
 		}
 		return roomMessages;
