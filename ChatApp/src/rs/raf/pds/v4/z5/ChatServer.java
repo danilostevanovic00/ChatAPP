@@ -167,6 +167,7 @@ public class ChatServer implements Runnable{
 	ChatRoomMessage[] getFiveRoomMessages(String roomName) {
 		ChatRoomMessage[] roomMessages = new ChatRoomMessage[5];
 		ArrayList<ChatRoomMessage> roomMessageList = chatRoomsMessages.get(roomName);
+		System.out.println(roomMessageList);
 		List<ChatRoomMessage> listOfFive;
 		if (roomMessageList.size()>5) {
 			listOfFive = roomMessageList.subList(roomMessageList.size()-5, roomMessageList.size());

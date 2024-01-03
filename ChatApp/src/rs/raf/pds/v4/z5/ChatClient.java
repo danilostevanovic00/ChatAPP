@@ -157,10 +157,14 @@ public class ChatClient implements Runnable{
 		if (chatRoomMessages[0]==null) {
 			System.out.print("No previous messages");
 		}else {
-			for (int i = 0; i<5; i++) {
-				String user = chatRoomMessages[i].getUser();
-				String message = chatRoomMessages[i].getMessage();
-				System.out.println(user+" : "+message);
+			for (int i = 0; i<chatRoomMessages.length; i++) {
+				if (chatRoomMessages[i] == null) {
+					break;
+				}else {
+					String user = chatRoomMessages[i].getUser();
+					String message = chatRoomMessages[i].getMessage();
+					System.out.println(user+" : "+message);
+				}
 			}
 		}
 	}
