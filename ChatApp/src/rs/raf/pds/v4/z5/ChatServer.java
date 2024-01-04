@@ -2,9 +2,7 @@ package rs.raf.pds.v4.z5;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -41,7 +39,7 @@ public class ChatServer implements Runnable{
 	ConcurrentMap<String, Connection> userConnectionMap = new ConcurrentHashMap<String, Connection>();
 	ConcurrentMap<Connection, String> connectionUserMap = new ConcurrentHashMap<Connection, String>();
 	
-	ConcurrentMap<String, Queue<PrivateMessage>> privateMessages = new ConcurrentHashMap<>();
+	ConcurrentMap<String, ArrayList<PrivateMessage>> privateMessages = new ConcurrentHashMap<>();
 	
 	ConcurrentMap<String, ChatRoom> chatRooms = new ConcurrentHashMap<>();
 	ConcurrentMap<String, ArrayList<ChatRoomMessage>> chatRoomsMessages = new ConcurrentHashMap<>();
@@ -79,9 +77,13 @@ public class ChatServer implements Runnable{
 				if (object instanceof PrivateMessage) {
 					PrivateMessage privateMessage = (PrivateMessage) object;
 				    String recipient = privateMessage.getRecipient();
-				    Queue<PrivateMessage> recipientQueue = privateMessages.get(recipient);
+				    ArrayList<PrivateMessage> recipientQueue = privateMessages.get(recipient);
 				    if (recipientQueue != null) {
-				        recipientQueue.offer(privateMessage);
+				        recipientQueue.add(privateMessage);
+				    }else {
+				    	privateMessages.put(recipient,new ArrayList<>());
+				    	ArrayList<PrivateMessage> newQueue = privateMessages.get(recipient);
+				    	newQueue.add(privateMessage);
 				    }
 				    sendPrivateChatMessage(privateMessage,connection);
 				    return;
@@ -206,7 +208,7 @@ public class ChatServer implements Runnable{
 	private void newUserLogged(Login loginMessage, Connection conn) {
 		userConnectionMap.put(loginMessage.getUserName(), conn);
 		connectionUserMap.put(conn, loginMessage.getUserName());
-		privateMessages.put(loginMessage.getUserName(), new LinkedList<>());
+		privateMessages.put(loginMessage.getUserName(), new ArrayList<>());
 		showTextToAll("User "+loginMessage.getUserName()+" has connected!", conn);
 	}
 	
