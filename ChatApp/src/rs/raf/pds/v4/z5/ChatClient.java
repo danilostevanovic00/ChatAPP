@@ -8,6 +8,7 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 
+import rs.raf.pds.v4.z5.messages.AllPrivateMessage;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
@@ -22,6 +23,7 @@ import rs.raf.pds.v4.z5.messages.ListRooms;
 import rs.raf.pds.v4.z5.messages.ListUsers;
 import rs.raf.pds.v4.z5.messages.Login;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
+import rs.raf.pds.v4.z5.messages.RequestPrivateMessage;
 import rs.raf.pds.v4.z5.messages.WhoRequest;
 import rs.raf.pds.v4.z5.messages.WhoRoomRequest;
 
@@ -39,6 +41,8 @@ public class ChatClient implements Runnable{
 	final int portNumber;
 	final String userName;
 	
+	String[] onlineUsers;
+	String[] rooms;
 	
 	public ChatClient(String hostName, int portNumber, String userName) {
 		this.client = new Client(DEFAULT_CLIENT_WRITE_BUFFER_SIZE, DEFAULT_CLIENT_READ_BUFFER_SIZE);
@@ -66,12 +70,14 @@ public class ChatClient implements Runnable{
 				if (object instanceof ListUsers) {
 					ListUsers listUsers = (ListUsers)object;
 					showOnlineUsers(listUsers.getUsers());
+					onlineUsers = listUsers.getUsers();
 					return;
 				}
 				
 				if (object instanceof ListRooms) {
 					ListRooms listRooms = (ListRooms)object;
 					showRooms(listRooms.getRooms());
+					rooms = listRooms.getRooms();
 					return;
 				}
 				
@@ -117,6 +123,15 @@ public class ChatClient implements Runnable{
 			}
 		});
 	}
+	
+	String[] getAllUsers() {
+		return onlineUsers;
+	}
+	
+	String[] getAllRooms() {
+		return rooms;
+	}
+	
 	private void showChatMessage(ChatMessage chatMessage) {
 		System.out.println(chatMessage.getUser()+":"+chatMessage.getTxt());
 	}
@@ -183,6 +198,18 @@ public class ChatClient implements Runnable{
 		}
 	}
 	
+	public void sendWhoRequest() {
+		client.sendTCP(new WhoRequest());
+	}
+	
+	public void sendWhoRoom() {
+		client.sendTCP(new WhoRoomRequest());
+	}
+	
+	public void createChatRoom(String roomName) {
+		client.sendTCP(new CreateRoomMessage(roomName));
+	}
+	
 	public void start() throws IOException {
 		client.start();
 		connect();
@@ -209,6 +236,9 @@ public class ChatClient implements Runnable{
 				BufferedReader stdIn = new BufferedReader(
 	                    new InputStreamReader(System.in))	// Za čitanje sa standardnog ulaza - tastature!
 	        ) {
+			
+				sendWhoRequest();
+				sendWhoRoom();
 					            
 				String userInput;
 				running = true;

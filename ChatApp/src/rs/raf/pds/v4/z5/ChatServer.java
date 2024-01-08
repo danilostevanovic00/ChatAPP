@@ -2,6 +2,8 @@ package rs.raf.pds.v4.z5;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -11,11 +13,13 @@ import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 
 import rs.raf.pds.v4.z5.extra.ChatRoom;
+import rs.raf.pds.v4.z5.messages.AllPrivateMessage;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
 import rs.raf.pds.v4.z5.messages.GetMoreMessagesMesage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
+import rs.raf.pds.v4.z5.messages.RequestPrivateMessage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
 import rs.raf.pds.v4.z5.messages.JoinRoomMessage;
@@ -58,6 +62,8 @@ public class ChatServer implements Runnable{
 					Login login = (Login)object;
 					newUserLogged(login, connection);
 					connection.sendTCP(new InfoMessage("Hello "+login.getUserName()));
+					ListUsers listUsers = new ListUsers(getAllUsers());
+					broadcastUsersMessage(listUsers);
 					try {
 						Thread.sleep(2000);
 					} catch (InterruptedException e) {
@@ -115,6 +121,8 @@ public class ChatServer implements Runnable{
 				    showTextToOne("User "+connectionUserMap.get(connection)+" joined room "+ roomName,connection);
 				    chatRoomsMessages.put(roomName, new ArrayList<>());
 				    showTextToOne("Created list for messages for room "+ roomName,connection);
+				    ListRooms listRooms = new ListRooms(getAllRooms());
+				    broadcastRoomsMessage(listRooms);
 				    return;
 				}
 				
@@ -152,6 +160,8 @@ public class ChatServer implements Runnable{
 				connectionUserMap.remove(connection);
 				userConnectionMap.remove(user);
 				showTextToAll(user+" has disconnected!", connection);
+				ListUsers listUsers = new ListUsers(getAllUsers());
+				broadcastUsersMessage(listUsers);
 			}
 		});
 	}
@@ -204,6 +214,32 @@ public class ChatServer implements Runnable{
 		}
 		return rooms;
 	}
+	/*
+	PrivateMessage[] getPrivateMessages(RequestPrivateMessage requestPrivateMessage) {
+		ArrayList<PrivateMessage> allFromSender = privateMessages.get(requestPrivateMessage.getSender());
+		ArrayList<PrivateMessage> allFromReciver = privateMessages.get(requestPrivateMessage.getReciver());
+		ArrayList<PrivateMessage> allFromPrivateChat = new ArrayList<>();
+		for (PrivateMessage pm: allFromSender) {
+			if (pm.getRecipient()==requestPrivateMessage.getReciver()) {
+				allFromPrivateChat.add(pm);
+			}
+		}
+		for (PrivateMessage pm: allFromReciver) {
+			if (pm.getRecipient()==requestPrivateMessage.getSender()) {
+				allFromPrivateChat.add(pm);
+			}
+		}
+		
+		PrivateMessage[] privateAllMessages= new PrivateMessage[allFromPrivateChat.size()];
+		int i = 0;
+		for (PrivateMessage pm: allFromPrivateChat) {
+			privateAllMessages[i]= pm;
+			i++;
+		}
+		
+		Arrays.sort(privateAllMessages, Comparator.comparing(PrivateMessage::getTimestamp));
+		return privateAllMessages;
+	}*/
 	
 	private void newUserLogged(Login loginMessage, Connection conn) {
 		userConnectionMap.put(loginMessage.getUserName(), conn);
@@ -235,6 +271,20 @@ public class ChatServer implements Runnable{
 		for (Connection conn: userConnectionMap.values()) {
 			if (conn.isConnected() && conn != exception)
 				conn.sendTCP(message);
+		}
+	}
+	
+	private void broadcastUsersMessage(ListUsers listUsers) {
+		for (Connection conn: userConnectionMap.values()) {
+			if (conn.isConnected())
+				conn.sendTCP(listUsers);
+		}
+	}
+	
+	private void broadcastRoomsMessage(ListRooms listRooms) {
+		for (Connection conn: userConnectionMap.values()) {
+			if (conn.isConnected())
+				conn.sendTCP(listRooms);
 		}
 	}
 	

@@ -9,6 +9,7 @@ public class KryoUtil {
 		kryo.register(Login.class);
 		kryo.register(ChatMessage.class);
 		kryo.register(PrivateMessage.class);
+		kryo.register(PrivateMessage[].class);
 		kryo.register(WhoRequest.class);
 		kryo.register(WhoRoomRequest.class);
 		kryo.register(ListUsers.class);
@@ -22,5 +23,7 @@ public class KryoUtil {
 		kryo.register(ListFiveAtJoin.class);
 		kryo.register(ListAllFromRoom.class);
 		kryo.register(GetMoreMessagesMesage.class);
+		kryo.register(AllPrivateMessage.class);
+		kryo.register(RequestPrivateMessage.class);
 	}
 }

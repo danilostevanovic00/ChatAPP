@@ -4,6 +4,7 @@ public class PrivateMessage {
 	String recipient;
 	String user;
 	String txt;
+	long timestamp= System.currentTimeMillis();
 	
 	protected PrivateMessage() {
 		
@@ -25,6 +26,10 @@ public class PrivateMessage {
 	
 	public String getRecipient() {
 		return this.recipient;
+	}
+	
+	public long getTimestamp() {
+		return this.timestamp;
 	}
 	
 	
