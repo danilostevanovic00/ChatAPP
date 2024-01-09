@@ -64,6 +64,10 @@ public class ChatServer implements Runnable{
 					Login login = (Login)object;
 					newUserLogged(login, connection);
 					connection.sendTCP(new InfoMessage("Hello "+login.getUserName()));
+					for(ChatRoom cr:chatRooms.values()) {
+						newJoinToRoom(new JoinRoomMessage(cr.getName()),connection);
+				    	showTextToOne("User "+connectionUserMap.get(connection)+" joined room "+ cr.getName(),connection);
+					}
 					ListUsers listUsers = new ListUsers(getAllUsers());
 					broadcastUsersMessage(listUsers);
 					try {
@@ -138,8 +142,10 @@ public class ChatServer implements Runnable{
 				    String roomName = createRoomMessage.getRoomName();
 				    newRoomCreated(createRoomMessage,connection);
 				    showTextToOne("Room "+roomName+" created!",connection);
-				    newJoinToRoom(new JoinRoomMessage(roomName),connection);
-				    showTextToOne("User "+connectionUserMap.get(connection)+" joined room "+ roomName,connection);
+				    for (Connection conn:userConnectionMap.values()) {
+				    	newJoinToRoom(new JoinRoomMessage(roomName),conn);
+				    	showTextToOne("User "+connectionUserMap.get(conn)+" joined room "+ roomName,conn);
+				    }
 				    chatRoomsMessages.put(roomName, new ArrayList<>());
 				    showTextToOne("Created list for messages for room "+ roomName,connection);
 				    ListRooms listRooms = new ListRooms(getAllRooms());

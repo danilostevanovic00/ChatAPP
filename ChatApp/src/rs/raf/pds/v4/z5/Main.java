@@ -30,6 +30,7 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
 
     private TextField messageField;
     ListView<String> listView;
+    ListView<String> messagesListView;
     
     //May God help me
     ObservableList<String> usersAndRooms = FXCollections.observableArrayList();
@@ -103,9 +104,13 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         VBox leftBox = new VBox(scrollPane, createChatRoomButton, newChatRoomField,warningLabel);
         leftBox.setPadding(new Insets(10));
         
-        ListView<String> messagesListView = new ListView<>(currentMessages);
+        messagesListView = new ListView<>(currentMessages);
+
+        ScrollPane scrollPane1 = new ScrollPane(messagesListView);
+        scrollPane1.setFitToWidth(true); // Adjust as needed
+        scrollPane1.setFitToHeight(true);
         messagesListView.setPrefHeight(300);
-        messagesListView.setMouseTransparent(true);
+        //messagesListView.setMouseTransparent(true);
         messagesListView.setFocusTraversable(false);
         
         messageField = new TextField();
@@ -113,7 +118,7 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         Button sendButton = new Button("Send");
         sendButton.setOnAction(event -> sendMessage());
 
-        VBox rightBox = new VBox(messagesListView, createMessageInput(sendButton));
+        VBox rightBox = new VBox(scrollPane1, createMessageInput(sendButton));
         rightBox.setPadding(new Insets(10));
 
         root.setLeft(leftBox);
@@ -166,6 +171,7 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
     @Override
     public void onRecivedListOfMessages(PrivateMessage[] result) {
         Platform.runLater(() -> {
+        	
         	String[] messages = new String[result.length];
         	int i = 0;
         	for (PrivateMessage pm: result) {
@@ -179,6 +185,24 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         		Arrays.stream(messages)
                 .filter(element -> !currentMessages.contains(element))
                 .forEach(currentMessages::add);
+        		String first = result[0].getRecipient();
+        		String second = result[0].getUser();
+        		if (first == chatClient.userName) {
+        			int index = usersAndRooms.indexOf(first);
+
+                    if (index != -1) {
+                        // If the item is found, select it
+                        listView.getSelectionModel().select(index);
+                    }
+        		}else {
+        			int index = usersAndRooms.indexOf(second);
+
+                    if (index != -1) {
+                        // If the item is found, select it
+                        listView.getSelectionModel().select(index);
+                    }
+        		}
+        		messagesListView.scrollTo(currentMessages.size() - 1);
         	}else {
         		currentMessages.clear();
         	}
@@ -201,6 +225,14 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         		Arrays.stream(messages)
                 .filter(element -> !currentMessages.contains(element))
                 .forEach(currentMessages::add);
+        		
+        		int index = usersAndRooms.indexOf(result[0].getRoomName());
+
+                if (index != -1) {
+                    // If the item is found, select it
+                    listView.getSelectionModel().select(index);
+                }
+                messagesListView.scrollTo(currentMessages.size() - 1);
         	}else {
         		currentMessages.clear();
         	}
