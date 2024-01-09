@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -13,6 +14,7 @@ import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 
 import rs.raf.pds.v4.z5.extra.ChatRoom;
+import rs.raf.pds.v4.z5.messages.AllChatMessage;
 import rs.raf.pds.v4.z5.messages.AllPrivateMessage;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
@@ -92,6 +94,18 @@ public class ChatServer implements Runnable{
 				    	newQueue.add(privateMessage);
 				    }
 				    sendPrivateChatMessage(privateMessage,connection);
+				    RequestPrivateMessage requestPrivateMessage = new RequestPrivateMessage(privateMessage.getRecipient(),privateMessage.getUser());
+				    connection.sendTCP(new AllPrivateMessage(getAllPrivateMessages(requestPrivateMessage)));
+				    return;
+				}
+				
+				if (object instanceof RequestPrivateMessage) {
+					RequestPrivateMessage requestPrivateMessage = (RequestPrivateMessage) object;
+					if (chatRooms.containsKey(requestPrivateMessage.getReciver())) {
+						connection.sendTCP(new ListAllFromRoom(getAllRoomMessages(requestPrivateMessage.getReciver())));
+					}else {
+						connection.sendTCP(new AllPrivateMessage(getAllPrivateMessages(requestPrivateMessage)));
+					}
 				    return;
 				}
 				
@@ -102,7 +116,14 @@ public class ChatServer implements Runnable{
 				    if (user != null) {
 				    	sendChatRoomMessage(chatRoomMessage,connection);
 				    	chatRoomsMessages.get(chatRoomMessage.getRoomName()).add(chatRoomMessage);
+				    	for (Connection conn: chatRooms.get(chatRoomMessage.getRoomName()).getUserConnectionMap().values()) {
+							if (conn.isConnected())
+								conn.sendTCP(new ListAllFromRoom(getAllRoomMessages(chatRoomMessage.getRoomName())));
+						}
+				    	
 				    }
+				    ListRooms listRooms = new ListRooms(getAllRooms());
+					broadcastRoomsMessage(listRooms);
 				    return;
 				}
 				
@@ -141,6 +162,7 @@ public class ChatServer implements Runnable{
 				    connection.sendTCP(new ListAllFromRoom(getAllRoomMessages(roomName)));
 				    return;
 				}
+				
 
 				if (object instanceof WhoRequest) {
 					ListUsers listUsers = new ListUsers(getAllUsers());
@@ -159,12 +181,26 @@ public class ChatServer implements Runnable{
 				String user = connectionUserMap.get(connection);
 				connectionUserMap.remove(connection);
 				userConnectionMap.remove(user);
+				privateMessages.remove(user);
+				removeMessagesFromOtherUsers(user);
 				showTextToAll(user+" has disconnected!", connection);
 				ListUsers listUsers = new ListUsers(getAllUsers());
 				broadcastUsersMessage(listUsers);
 			}
 		});
 	}
+	
+	public void removeMessagesFromOtherUsers(String user) {
+        for (ArrayList<PrivateMessage> messages : privateMessages.values()) {
+            Iterator<PrivateMessage> iterator = messages.iterator();
+            while (iterator.hasNext()) {
+                PrivateMessage message = iterator.next();
+                if (message.getUser().equals(user)) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
 	
 	String[] getAllUsers() {
 		String[] users = new String[userConnectionMap.size()];
@@ -214,32 +250,45 @@ public class ChatServer implements Runnable{
 		}
 		return rooms;
 	}
-	/*
-	PrivateMessage[] getPrivateMessages(RequestPrivateMessage requestPrivateMessage) {
-		ArrayList<PrivateMessage> allFromSender = privateMessages.get(requestPrivateMessage.getSender());
-		ArrayList<PrivateMessage> allFromReciver = privateMessages.get(requestPrivateMessage.getReciver());
-		ArrayList<PrivateMessage> allFromPrivateChat = new ArrayList<>();
-		for (PrivateMessage pm: allFromSender) {
-			if (pm.getRecipient()==requestPrivateMessage.getReciver()) {
-				allFromPrivateChat.add(pm);
-			}
-		}
-		for (PrivateMessage pm: allFromReciver) {
-			if (pm.getRecipient()==requestPrivateMessage.getSender()) {
-				allFromPrivateChat.add(pm);
-			}
-		}
-		
-		PrivateMessage[] privateAllMessages= new PrivateMessage[allFromPrivateChat.size()];
-		int i = 0;
-		for (PrivateMessage pm: allFromPrivateChat) {
-			privateAllMessages[i]= pm;
-			i++;
-		}
-		
-		Arrays.sort(privateAllMessages, Comparator.comparing(PrivateMessage::getTimestamp));
-		return privateAllMessages;
-	}*/
+	
+	PrivateMessage[] getAllPrivateMessages(RequestPrivateMessage requestPrivateMessage) {
+	    System.out.println("Request received: " + requestPrivateMessage);
+
+	    ArrayList<PrivateMessage> allFromSender = privateMessages.get(requestPrivateMessage.getSender());
+	    ArrayList<PrivateMessage> allFromReciver = privateMessages.get(requestPrivateMessage.getReciver());
+	    ArrayList<PrivateMessage> allFromPrivateChat = new ArrayList<>();
+
+	    System.out.println("allFromSender: " + allFromSender);
+	    System.out.println("allFromReciver: " + allFromReciver);
+
+	    for (PrivateMessage pm : allFromSender) {
+	        System.out.println("Checking message from sender: " + pm);
+	        if (pm.getUser().trim().equals(requestPrivateMessage.getReciver().trim())) {
+	            System.out.println("Adding message to private chat: " + pm);
+	            allFromPrivateChat.add(pm);
+	        }
+	    }
+
+	    for (PrivateMessage pm : allFromReciver) {
+	        System.out.println("Checking message from receiver: " + pm);
+	        if (pm.getUser().trim().equals(requestPrivateMessage.getSender().trim())) {
+	            System.out.println("Adding message to private chat: " + pm);
+	            allFromPrivateChat.add(pm);
+	        }
+	    }
+
+
+	    PrivateMessage[] privateAllMessages = new PrivateMessage[allFromPrivateChat.size()];
+	    int i = 0;
+
+	    for (PrivateMessage pm : allFromPrivateChat) {
+	        privateAllMessages[i] = pm;
+	        i++;
+	    }
+
+	    System.out.println("Private messages found: " + Arrays.toString(privateAllMessages));
+	    return privateAllMessages;
+	}
 	
 	private void newUserLogged(Login loginMessage, Connection conn) {
 		userConnectionMap.put(loginMessage.getUserName(), conn);

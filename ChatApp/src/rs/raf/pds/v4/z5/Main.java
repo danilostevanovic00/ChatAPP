@@ -4,7 +4,12 @@ import java.util.Arrays;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.StringBinding;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -12,17 +17,24 @@ import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.converter.CharacterStringConverter;
+import rs.raf.pds.v4.z5.ChatClient.ChatClientMessageObserver;
+import rs.raf.pds.v4.z5.ChatClient.ChatClientObserver;
+import rs.raf.pds.v4.z5.ChatClient.ChatRoomMessageObserver;
+import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
+import rs.raf.pds.v4.z5.messages.PrivateMessage;
 
-public class Main extends Application {
+public class Main extends Application implements ChatClientObserver, ChatClientMessageObserver,ChatRoomMessageObserver {
 
     private ChatClient chatClient;
 
-    private ListView<String> clientList;
-    private TextArea chatArea;
     private TextField messageField;
-
-    private ObservableList<String> chatEntities = FXCollections.observableArrayList();
-    private ListView<String> chatEntityList;
+    ListView<String> listView;
+    
+    //May God help me
+    ObservableList<String> usersAndRooms = FXCollections.observableArrayList();
+    
+    ObservableList<String> currentMessages = FXCollections.observableArrayList();
 
 
     public static void main(String[] args) {
@@ -31,44 +43,77 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        // Initialize your ChatClient here
         String hostName = "localhost";
-        int portNumber = 4555;  // Update with your actual port number
+        int portNumber = 4555;  
         String userName = "Danilo";
 
         chatClient = new ChatClient(hostName, portNumber, userName);
+        chatClient.addObserver(this);
+        chatClient.addObserverForMessage(this);
+        chatClient.addObserverForRoom(this);
 
         // UI components
         BorderPane root = new BorderPane();
-        
-        Button loadEntitiesButton = new Button("Load Chat Entities");
-        loadEntitiesButton.setOnAction(event -> loadChatEntities());
-        chatEntityList = new ListView<>(chatEntities);
-        chatEntityList.setOnMouseClicked(event -> showChatForSelectedEntity());
-        
 
+        // Create a ListView and set the items
+        listView = new ListView<>(usersAndRooms);
+        listView.setPrefHeight(200); // Set your preferred height
+
+        ScrollPane scrollPane = new ScrollPane(listView);
+        scrollPane.setFitToWidth(true); // Adjust as needed
+        scrollPane.setFitToHeight(true); // Adjust as needed
+        listView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 1) {
+                // Single-click action (you can change this to handle double-click or other events)
+                String selectedItem = listView.getSelectionModel().getSelectedItem();
+                
+                if (selectedItem != null) {
+                    // Call the function in ChatClient based on the selected item
+                    chatClient.contextSwitchChat(selectedItem);
+                }
+            }
+        });
+        
         // Create a text field for entering the new chat room name
         TextField newChatRoomField = new TextField();
         newChatRoomField.setPromptText("Enter Chat Room Name");
         
-       
+        Label warningLabel = new Label();
+        warningLabel.setStyle("-fx-text-fill: red;");
+
+        // Use a TextFormatter to limit input to uppercase letters
+        newChatRoomField.setTextFormatter(new TextFormatter<>(new CharacterStringConverter(), null,
+                change -> {
+                    String newText = change.getControlNewText();
+                    if (newText.matches("[A-Z]*")) {
+                        warningLabel.setText(""); // Clear warning if it's valid
+                        return change;
+                    } else {
+                        warningLabel.setText("Only uppercase letters are allowed");
+                        return null;
+                    }
+                }));
+        
         Button createChatRoomButton = new Button("Create Chat Room");
-        createChatRoomButton.setOnAction(event -> createChatRoom(newChatRoomField));
+        createChatRoomButton.setOnAction(event -> {
+            createChatRoom(newChatRoomField.getText());
+            newChatRoomField.clear();
+        });
         	
-        VBox leftBox = new VBox(loadEntitiesButton, chatEntityList, createChatRoomButton, newChatRoomField);
+        VBox leftBox = new VBox(scrollPane, createChatRoomButton, newChatRoomField,warningLabel);
         leftBox.setPadding(new Insets(10));
         
-        // Right side - Chat Area and Message Input
-        chatArea = new TextArea();
-        chatArea.setEditable(false);
-
+        ListView<String> messagesListView = new ListView<>(currentMessages);
+        messagesListView.setPrefHeight(300);
+        messagesListView.setMouseTransparent(true);
+        messagesListView.setFocusTraversable(false);
+        
         messageField = new TextField();
-        messageField.setOnAction(event -> sendMessage());
 
         Button sendButton = new Button("Send");
         sendButton.setOnAction(event -> sendMessage());
 
-        VBox rightBox = new VBox(chatArea, createMessageInput(sendButton));
+        VBox rightBox = new VBox(messagesListView, createMessageInput(sendButton));
         rightBox.setPadding(new Insets(10));
 
         root.setLeft(leftBox);
@@ -78,10 +123,12 @@ public class Main extends Application {
         primaryStage.setTitle("Chat Client");
         primaryStage.setScene(new Scene(root, 800, 600));
         primaryStage.setOnCloseRequest(event -> {
-            chatClient.stop();
+        	Platform.runLater(() -> {
+                chatClient.stop();
+            });
             Platform.exit();
         });
-
+        
         // Start the client and show the stage
         try {
             chatClient.start();
@@ -91,62 +138,79 @@ public class Main extends Application {
         }
     }
     
-    private void createChatRoom(TextField newChatRoomField) {
-        String newChatRoomName = newChatRoomField.getText().trim();
-        if (!newChatRoomName.isEmpty()) {
-            // Implement the logic to create a new chat room
-            // You may need to call a method on your ChatClient to create a new chat room
-            // Update this part based on your ChatClient implementation
-            chatClient.createChatRoom(newChatRoomName);
-            newChatRoomField.clear();
-        }
-    }
-
-    private void showChatForSelectedEntity() {
-        String selectedEntity = chatEntityList.getSelectionModel().getSelectedItem();
-        if (selectedEntity != null) {
-            String[] allUsers = chatClient.getAllUsers();
-            String[] allChatRooms = chatClient.getAllRooms();
-
-            if (allUsers != null && Arrays.asList(allUsers).contains(selectedEntity)) {
-                // Fetch and display previous messages for the selected chat client
-                // Update this part based on your ChatClient implementation
-                chatArea.setText("Previous messages with " + selectedEntity);
-            } else if (allChatRooms != null && Arrays.asList(allChatRooms).contains(selectedEntity)) {
-                // Fetch and display previous messages for the selected chat room
-                // Update this part based on your ChatClient implementation
-                chatArea.setText("Previous messages in " + selectedEntity);
-            }
-        } else {
-            chatArea.clear();
-        }
-    }
-
-    
-    private void loadChatEntities() {
-        // Implement the logic to load the list of chat clients and chat rooms
-        // You may need to call methods on your ChatClient to fetch online users and chat rooms
-        String[] onlineUsers = chatClient.getAllUsers();
-        String[] chatRooms = chatClient.getAllRooms();
-
-        chatEntities.clear();
-        if (onlineUsers != null) {
-            chatEntities.addAll(onlineUsers);
-        }
-        if (chatRooms != null) {
-            chatEntities.addAll(chatRooms);
-        }
-    }
-
     private void sendMessage() {
-        String message = messageField.getText().trim();
-        String selectedClient = clientList.getSelectionModel().getSelectedItem();
-        if (!message.isEmpty() && selectedClient != null) {
-            // Send private message to the selected client
-            chatClient.sendPrivateMessage(selectedClient, message);
+        String messageText = messageField.getText().trim();
+        if (!messageText.isEmpty()) {
+        	
+        	if (listView.getSelectionModel().getSelectedItem() != null && listView.getSelectionModel().getSelectedItem().matches("[A-Z]+")) {
+        		chatClient.sendRoomMessage(listView.getSelectionModel().getSelectedItem(),messageText);
+        	} else {
+        		chatClient.sendPrivateMessage(listView.getSelectionModel().getSelectedItem(),messageText);
+        	}
+
+            // Clear the messageField after sending the message
             messageField.clear();
         }
     }
+    
+    @Override
+    public void onRecivedListOfEntity(String[] result) {
+        Platform.runLater(() -> {
+            // Check and add only elements that are not already present in usersAndRooms
+            Arrays.stream(result)
+                    .filter(element -> !usersAndRooms.contains(element))
+                    .forEach(usersAndRooms::add);
+        });
+    }
+    
+    @Override
+    public void onRecivedListOfMessages(PrivateMessage[] result) {
+        Platform.runLater(() -> {
+        	String[] messages = new String[result.length];
+        	int i = 0;
+        	for (PrivateMessage pm: result) {
+        		messages[i] = pm.getUser()+": "+pm.getTxt()+"    -"+pm.getTimestamp();
+        		i++;
+        	}
+        	System.out.println(messages);
+        	if (result.length!=0) {
+        		
+        		currentMessages.clear();
+        		Arrays.stream(messages)
+                .filter(element -> !currentMessages.contains(element))
+                .forEach(currentMessages::add);
+        	}else {
+        		currentMessages.clear();
+        	}
+        });
+    }
+    
+    @Override
+    public void onRecivedListOfRoomMessages(ChatRoomMessage[] result) {
+        Platform.runLater(() -> {
+        	String[] messages = new String[result.length];
+        	int i = 0;
+        	for (ChatRoomMessage crm: result) {
+        		messages[i] = crm.getUser()+": "+crm.getMessage();
+        		i++;
+        	}
+        	System.out.println(messages);
+        	if (result.length!=0) {
+        		
+        		currentMessages.clear();
+        		Arrays.stream(messages)
+                .filter(element -> !currentMessages.contains(element))
+                .forEach(currentMessages::add);
+        	}else {
+        		currentMessages.clear();
+        	}
+        });
+    }
+    
+    public void createChatRoom(String roomName) {
+    	chatClient.createChatRoom(roomName);
+    }
+
 
     private ToolBar createMessageInput(Button sendButton) {
         ToolBar toolBar = new ToolBar();

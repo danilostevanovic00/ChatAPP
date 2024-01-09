@@ -3,11 +3,23 @@ package rs.raf.pds.v4.z5;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
+import rs.raf.pds.v4.z5.messages.AllChatMessage;
 import rs.raf.pds.v4.z5.messages.AllPrivateMessage;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
@@ -41,8 +53,9 @@ public class ChatClient implements Runnable{
 	final int portNumber;
 	final String userName;
 	
-	String[] onlineUsers;
-	String[] rooms;
+	private List<ChatClientObserver> observers = new ArrayList<>();
+	private List<ChatClientMessageObserver> observersMessage = new ArrayList<>();
+	private List<ChatRoomMessageObserver> observersRoomMessage = new ArrayList<>();
 	
 	public ChatClient(String hostName, int portNumber, String userName) {
 		this.client = new Client(DEFAULT_CLIENT_WRITE_BUFFER_SIZE, DEFAULT_CLIENT_READ_BUFFER_SIZE);
@@ -53,6 +66,81 @@ public class ChatClient implements Runnable{
 		KryoUtil.registerKryoClasses(client.getKryo());
 		registerListener();
 	}
+	
+	//
+	
+	public interface ChatClientObserver {
+	    void onRecivedListOfEntity(String[] result);
+	}
+	
+	public void addObserver(ChatClientObserver observer) {
+        observers.add(observer);
+    }
+
+    public void removeObserver(ChatClientObserver observer) {
+        observers.remove(observer);
+    }
+
+    public void forwardToMain(String[] entity) {
+        
+        notifyObservers(entity);
+    }
+
+    private void notifyObservers(String[] result) {
+        for (ChatClientObserver observer : observers) {
+            observer.onRecivedListOfEntity(result);
+        }
+    }
+    
+    public interface ChatClientMessageObserver {
+	    void onRecivedListOfMessages(PrivateMessage[] result);
+	}
+    public void addObserverForMessage(ChatClientMessageObserver observer) {
+    	observersMessage.add(observer);
+    }
+
+    public void removeObserverMessages(ChatClientMessageObserver observer) {
+    	observersMessage.remove(observer);
+    }
+
+    // The method that you want to notify observers about
+    public void forwardToMainForMessage(PrivateMessage[] entity) {
+        notifyObserversForMessages(entity);
+    }
+
+    private void notifyObserversForMessages(PrivateMessage[] result) {
+        for (ChatClientMessageObserver observer : observersMessage) {
+            observer.onRecivedListOfMessages(result);
+        }
+    }
+    
+    public interface ChatRoomMessageObserver {
+	    void onRecivedListOfRoomMessages(ChatRoomMessage[] result);
+	}
+    public void addObserverForRoom(ChatRoomMessageObserver observer) {
+    	observersRoomMessage.add(observer);
+    }
+
+    public void removeObserverRoom(ChatRoomMessageObserver observer) {
+    	observersRoomMessage.remove(observer);
+    }
+
+    // The method that you want to notify observers about
+    public void forwardToMainForRoom(ChatRoomMessage[] entity) {
+        notifyObserversForRoomMessages(entity);
+    }
+
+    private void notifyObserversForRoomMessages(ChatRoomMessage[] result) {
+        for (ChatRoomMessageObserver observer : observersRoomMessage) {
+            observer.onRecivedListOfRoomMessages(result);
+        }
+    }
+    
+    public void contextSwitchChat(String selectedUser) {
+    	RequestPrivateMessage requestPrivateMessage = new RequestPrivateMessage(userName,selectedUser);
+	    client.sendTCP(requestPrivateMessage);
+    }
+	
 	private void registerListener() {
 		client.addListener(new Listener() {
 			public void connected (Connection connection) {
@@ -70,14 +158,14 @@ public class ChatClient implements Runnable{
 				if (object instanceof ListUsers) {
 					ListUsers listUsers = (ListUsers)object;
 					showOnlineUsers(listUsers.getUsers());
-					onlineUsers = listUsers.getUsers();
+					forwardToMain(listUsers.getUsers());
 					return;
 				}
 				
 				if (object instanceof ListRooms) {
 					ListRooms listRooms = (ListRooms)object;
 					showRooms(listRooms.getRooms());
-					rooms = listRooms.getRooms();
+					forwardToMain(listRooms.getRooms());
 					return;
 				}
 				
@@ -90,6 +178,7 @@ public class ChatClient implements Runnable{
 				if (object instanceof ListAllFromRoom) {
 					ListAllFromRoom listAllMessages = (ListAllFromRoom)object;
 					showAllMessagesFromRoom(listAllMessages);
+					forwardToMainForRoom(listAllMessages.getListOfAll());
 					return;
 				}
 				
@@ -114,6 +203,14 @@ public class ChatClient implements Runnable{
 				if (object instanceof PrivateMessage) {
 					PrivateMessage privateMessage = (PrivateMessage) object;
 				    showPrivateMessage(privateMessage);
+				    contextSwitchChat(privateMessage.getUser());
+				    return;
+				}
+				
+				if (object instanceof AllPrivateMessage) {
+					AllPrivateMessage allOfPrivateMessage = (AllPrivateMessage) object;
+					showAllPrivateMessage(allOfPrivateMessage);
+					forwardToMainForMessage(allOfPrivateMessage.getListOfAll());
 				    return;
 				}
 			}
@@ -124,14 +221,6 @@ public class ChatClient implements Runnable{
 		});
 	}
 	
-	String[] getAllUsers() {
-		return onlineUsers;
-	}
-	
-	String[] getAllRooms() {
-		return rooms;
-	}
-	
 	private void showChatMessage(ChatMessage chatMessage) {
 		System.out.println(chatMessage.getUser()+":"+chatMessage.getTxt());
 	}
@@ -140,9 +229,30 @@ public class ChatClient implements Runnable{
 	    System.out.println("[Private] " + privateMessage.getUser() + ": " + privateMessage.getTxt());
 	}
 	
+	private void showAllPrivateMessage(AllPrivateMessage allPrivateMessage) {
+	    PrivateMessage[] privateMessages = allPrivateMessage.getListOfAll();
+	    System.out.println("Private message with requested user ");
+	    
+	    if (privateMessages.length == 0) {
+	        System.out.print("No previous messages");
+	    } else {
+	        for (PrivateMessage pm : privateMessages) {
+	            String user = pm.getUser();
+	            String message = pm.getTxt();
+	            System.out.println("[Private] " + user + " : " + message);
+	        }
+	    }
+	}
+	
 	public void sendPrivateMessage(String recipient, String text) {
 	    PrivateMessage privateMessage = new PrivateMessage(recipient, userName, text);
+	    //addMessage(privateMessage);
 	    client.sendTCP(privateMessage);
+	}
+	public void sendRoomMessage(String roomName, String text) {
+		ChatRoomMessage chatRoomMessage = new ChatRoomMessage(userName,roomName, text);
+	    //addMessage(privateMessage);
+	    client.sendTCP(chatRoomMessage);
 	}
 	
 	private void showMessage(String txt) {
@@ -187,7 +297,7 @@ public class ChatClient implements Runnable{
 	private void showAllMessagesFromRoom(ListAllFromRoom listOfAll) {
 		System.out.print("All previous messages from room: \n");
 		ChatRoomMessage[] chatRoomMessages = listOfAll.getListOfAll();
-		if (chatRoomMessages[0]==null) {
+		if (chatRoomMessages.length==0) {
 			System.out.print("No previous messages");
 		}else {
 			for (ChatRoomMessage crm :chatRoomMessages) {
@@ -264,6 +374,16 @@ public class ChatClient implements Runnable{
 	                         client.sendTCP(new PrivateMessage(recipient, userName, messageText));
 	                     } else {
 	                         System.out.println("Invalid private message format. Use: PRIVATE recipient message");
+	                     }
+	                }
+	            	else if (userInput.startsWith("ALL PRIVATE ")) {
+	                     // Primer: PRIVATE imePrihvatioca tekst poruke
+	                     String[] parts = userInput.split(" ", 3);
+	                     if (parts.length == 3) {
+	                         String reciver = parts[2];
+	                         client.sendTCP(new RequestPrivateMessage(userName,reciver));
+	                     } else {
+	                         System.out.println("Invalid all private message format. Use: All PRIVATE recipient ");
 	                     }
 	                }
 	            	else if (userInput.startsWith("INVITE ")) {
