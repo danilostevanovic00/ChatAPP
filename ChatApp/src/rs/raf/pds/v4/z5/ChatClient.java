@@ -103,7 +103,6 @@ public class ChatClient implements Runnable{
     	observersMessage.remove(observer);
     }
 
-    // The method that you want to notify observers about
     public void forwardToMainForMessage(PrivateMessage[] entity) {
         notifyObserversForMessages(entity);
     }
@@ -125,7 +124,6 @@ public class ChatClient implements Runnable{
     	observersRoomMessage.remove(observer);
     }
 
-    // The method that you want to notify observers about
     public void forwardToMainForRoom(ChatRoomMessage[] entity) {
         notifyObserversForRoomMessages(entity);
     }

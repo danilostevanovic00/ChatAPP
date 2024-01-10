@@ -1,6 +1,7 @@
 package rs.raf.pds.v4.z5;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -54,36 +55,30 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         chatClient.addObserverForMessage(this);
         chatClient.addObserverForRoom(this);
 
-        // UI components
         BorderPane root = new BorderPane();
 
-        // Create a ListView and set the items
         listView = new ListView<>(usersAndRooms);
-        listView.setPrefHeight(200); // Set your preferred height
+        listView.setPrefHeight(200); 
 
         ScrollPane scrollPane = new ScrollPane(listView);
-        scrollPane.setFitToWidth(true); // Adjust as needed
-        scrollPane.setFitToHeight(true); // Adjust as needed
+        scrollPane.setFitToWidth(true); 
+        scrollPane.setFitToHeight(true); 
         listView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 1) {
-                // Single-click action (you can change this to handle double-click or other events)
                 String selectedItem = listView.getSelectionModel().getSelectedItem();
                 
                 if (selectedItem != null) {
-                    // Call the function in ChatClient based on the selected item
                     chatClient.contextSwitchChat(selectedItem);
                 }
             }
         });
         
-        // Create a text field for entering the new chat room name
         TextField newChatRoomField = new TextField();
         newChatRoomField.setPromptText("Enter Chat Room Name");
         
         Label warningLabel = new Label();
         warningLabel.setStyle("-fx-text-fill: red;");
 
-        // Use a TextFormatter to limit input to uppercase letters
         newChatRoomField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (!newValue.matches("[A-Z]*")) {
                 warningLabel.setText("Only uppercase letters are allowed");
@@ -106,11 +101,39 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         messagesListView.setCellFactory(createCellFactory());
 
         ScrollPane scrollPane1 = new ScrollPane(messagesListView);
-        scrollPane1.setFitToWidth(true); // Adjust as needed
+        scrollPane1.setFitToWidth(true); 
         scrollPane1.setFitToHeight(true);
         messagesListView.setPrefHeight(200);
         //messagesListView.setMouseTransparent(true);
-        messagesListView.setFocusTraversable(false);
+        messagesListView.setCellFactory(param -> {
+            ListCell<String> cell = new ListCell<String>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                    } else {
+                        setText(item);
+
+                        if (item.startsWith("Danilo")) {
+                            setStyle("-fx-alignment: center-right;");
+                        } else {
+                            setStyle("-fx-alignment: center-left;");
+                        }
+
+                        ContextMenu contextMenu = new ContextMenu();
+                        MenuItem editItem = new MenuItem("Edit");
+                        editItem.setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
+                        editItem.setOnAction(event -> editMessage(item));
+                        contextMenu.getItems().add(editItem);
+
+                        setContextMenu(contextMenu);
+                    }
+                }
+            };
+
+            return cell;
+        });
         
         messageField = new TextField();
 
@@ -125,7 +148,7 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
 
         Scene scene = new Scene(root, 800, 500);
         scene.getStylesheets().add(getClass().getResource("mystyle.css").toExternalForm());
-        // Set up the stage
+        
         primaryStage.setTitle("Chat Client");
         primaryStage.setScene(scene);
         primaryStage.setOnCloseRequest(event -> {
@@ -135,13 +158,27 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
             Platform.exit();
         });
         
-        // Start the client and show the stage
         try {
             chatClient.start();
             primaryStage.show();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    private void editMessage(String originalMessage) {
+        TextInputDialog dialog = new TextInputDialog(originalMessage);
+        dialog.setTitle("Edit Message");
+        dialog.setHeaderText("");
+        dialog.setContentText("Enter the new message:");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(newMessage -> {
+            int index = currentMessages.indexOf(originalMessage);
+            if (index != -1) {
+                currentMessages.set(index, newMessage);
+            }
+        });
     }
     
     private Callback<ListView<String>, ListCell<String>> createCellFactory() {
@@ -155,7 +192,6 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
                 } else {
                     setText(item);
 
-                    // Adjust alignment based on the starting string
                     if (item.startsWith("Danilo")) {
                         setStyle("-fx-alignment: center-right;");
                     } else {
@@ -176,7 +212,6 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         		chatClient.sendPrivateMessage(listView.getSelectionModel().getSelectedItem(),messageText);
         	}
 
-            // Clear the messageField after sending the message
             messageField.clear();
         }
     }
@@ -184,7 +219,6 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
     @Override
     public void onRecivedListOfEntity(String[] result) {
         Platform.runLater(() -> {
-            // Check and add only elements that are not already present in usersAndRooms
             Arrays.stream(result)
                     .filter(element -> !usersAndRooms.contains(element))
                     .forEach(usersAndRooms::add);
@@ -214,14 +248,12 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         			int index = usersAndRooms.indexOf(first);
 
                     if (index != -1) {
-                        // If the item is found, select it
                         listView.getSelectionModel().select(index);
                     }
         		}else {
         			int index = usersAndRooms.indexOf(second);
 
                     if (index != -1) {
-                        // If the item is found, select it
                         listView.getSelectionModel().select(index);
                     }
         		}
@@ -252,7 +284,6 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         		int index = usersAndRooms.indexOf(result[0].getRoomName());
 
                 if (index != -1) {
-                    // If the item is found, select it
                     listView.getSelectionModel().select(index);
                 }
                 messagesListView.scrollTo(currentMessages.size() - 1);
