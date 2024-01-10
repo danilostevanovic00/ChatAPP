@@ -20,6 +20,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.converter.CharacterStringConverter;
+import javafx.util.converter.DefaultStringConverter;
 import rs.raf.pds.v4.z5.ChatClient.ChatClientMessageObserver;
 import rs.raf.pds.v4.z5.ChatClient.ChatClientObserver;
 import rs.raf.pds.v4.z5.ChatClient.ChatRoomMessageObserver;
@@ -115,20 +116,13 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
                     } else {
                     	String displayedText = item.substring(0, item.length() - 17);
                         setText(displayedText);
+                        setWrapText(true);
 
                         if (item.startsWith("Danilo")) {
                             setStyle("-fx-alignment: center-right;");
                         } else {
                             setStyle("-fx-alignment: center-left;");
                         }
-/*
-                        ContextMenu contextMenu = new ContextMenu();
-                        MenuItem editItem = new MenuItem("Edit");
-                        editItem.setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
-                        editItem.setOnAction(event -> editMessage(item));
-                        contextMenu.getItems().add(editItem);
-
-                        setContextMenu(contextMenu);*/
                         
                         setOnMouseClicked(event -> {
                             if (item.startsWith("Danilo")) {
@@ -136,6 +130,13 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
                                 MenuItem editItem = new MenuItem("Edit");
                                 editItem.setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
                                 editItem.setOnAction(event1 -> editMessage(item));
+                                contextMenu.getItems().add(editItem);
+                                setContextMenu(contextMenu);
+                            }else {
+                            	ContextMenu contextMenu = new ContextMenu();
+                                MenuItem editItem = new MenuItem("Reply");
+                                editItem.setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
+                                editItem.setOnAction(event2 -> replyToMessage(item));
                                 contextMenu.getItems().add(editItem);
                                 setContextMenu(contextMenu);
                             }
@@ -148,9 +149,21 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         });
         
         messageField = new TextField();
+        messageField.setPromptText("max 40 characters");
+
+     // Set a filter to limit input to 40 characters
+        messageField.setTextFormatter(new TextFormatter<>(change -> {
+            if (change.isContentChange()) {
+                if (change.getControlNewText().length() <= 40) {
+                    return change;
+                }
+            }
+            return null;
+        }));
 
         Button sendButton = new Button("Send");
         sendButton.setOnAction(event -> sendMessage());
+        sendButton.disableProperty().bind(Bindings.isNull(listView.getSelectionModel().selectedItemProperty()));
 
         VBox rightBox = new VBox(scrollPane1, createMessageInput(sendButton));
         rightBox.setPadding(new Insets(10));
@@ -188,6 +201,24 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         result.ifPresent(newMessage -> {
         	if (newMessage!=originalMessage) {
             	sendEditMessageToServer(newMessage,originalMessage,listView.getSelectionModel().getSelectedItem(),chatClient.userName);
+        	}
+        });
+    }
+    
+    private void replyToMessage(String message) {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Reply to "+message.substring(0, message.length() - 17));
+        dialog.setHeaderText("");
+        dialog.setContentText("Enter reply message:");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(replyMessage -> {
+        	if (replyMessage.trim().length()!=0 && listView.getSelectionModel().getSelectedItem().matches("[A-Z]*")) {
+        		String newMessage ="Reply to "+message.substring(0, message.length() - 17).split(":")[0]+"- "+message.substring(0, message.length() - 17).split(":")[1]+" -> "+replyMessage;
+        		chatClient.sendRoomMessage(listView.getSelectionModel().getSelectedItem(),newMessage);
+        	}else {
+        		String newMessage ="Reply to "+message.substring(0, message.length() - 17).split(":")[0]+"- "+message.substring(0, message.length() - 17).split(":")[1]+" -> "+replyMessage;
+        		chatClient.sendPrivateMessage(listView.getSelectionModel().getSelectedItem(),newMessage);
         	}
         });
     }
@@ -260,18 +291,19 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
                 .forEach(currentMessages::add);
         		String first = result[0].getRecipient();
         		String second = result[0].getUser();
-        		if (first == listView.getSelectionModel().getSelectedItem()) {
-        			int index = usersAndRooms.indexOf(first);
 
-                    if (index != -1) {
-                        listView.getSelectionModel().select(index);
-                    }
-        		}else if(second==listView.getSelectionModel().getSelectedItem()) {
-        			int index = usersAndRooms.indexOf(second);
-
-                    if (index != -1) {
-                        listView.getSelectionModel().select(index);
-                    }
+        		if (!first.equals(chatClient.userName)) {
+        		    int index = usersAndRooms.indexOf(first);
+        		    System.out.println("Prvi");
+        		    if (index != -1) {
+        		        listView.getSelectionModel().select(index);
+        		    }
+        		} else if (!second.equals(chatClient.userName)) {
+        		    int index = usersAndRooms.indexOf(second);
+        		    System.out.println("DRUGI");
+        		    if (index != -1) {
+        		        listView.getSelectionModel().select(index);
+        		    }
         		}
         		messagesListView.scrollTo(currentMessages.size() - 1);
         	}else {
