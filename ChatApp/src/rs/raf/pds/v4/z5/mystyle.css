@@ -1,0 +1,34 @@
+/* mystyle.css */
+
+.root {
+    -fx-background-color: #f0f2f5; /* Facebook background color */
+}
+
+.list-view, .text-field, .button {
+    -fx-font-size: 14px;
+}
+
+.list-view {
+    -fx-background-color: #ffffff; /* White background for ListView */
+}
+
+.list-cell {
+    -fx-padding: 10px;
+}
+
+.text-field {
+    -fx-background-color: #ffffff; /* White background for TextField */
+}
+
+.button {
+    -fx-background-color: #1877f2; /* Facebook blue color for buttons */
+    -fx-text-fill: #ffffff; /* White text color for buttons */
+}
+
+.label {
+    -fx-text-fill: red;
+}
+
+.scroll-pane {
+    -fx-background-color: #ffffff; /* White background for ScrollPane */
+}

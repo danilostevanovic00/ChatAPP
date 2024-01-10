@@ -17,6 +17,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 import javafx.util.converter.CharacterStringConverter;
 import rs.raf.pds.v4.z5.ChatClient.ChatClientMessageObserver;
 import rs.raf.pds.v4.z5.ChatClient.ChatClientObserver;
@@ -83,17 +84,14 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         warningLabel.setStyle("-fx-text-fill: red;");
 
         // Use a TextFormatter to limit input to uppercase letters
-        newChatRoomField.setTextFormatter(new TextFormatter<>(new CharacterStringConverter(), null,
-                change -> {
-                    String newText = change.getControlNewText();
-                    if (newText.matches("[A-Z]*")) {
-                        warningLabel.setText(""); // Clear warning if it's valid
-                        return change;
-                    } else {
-                        warningLabel.setText("Only uppercase letters are allowed");
-                        return null;
-                    }
-                }));
+        newChatRoomField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("[A-Z]*")) {
+                warningLabel.setText("Only uppercase letters are allowed");
+                newChatRoomField.setText(oldValue);
+            } else {
+                warningLabel.setText("");
+            }
+        });
         
         Button createChatRoomButton = new Button("Create Chat Room");
         createChatRoomButton.setOnAction(event -> {
@@ -105,11 +103,12 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         leftBox.setPadding(new Insets(10));
         
         messagesListView = new ListView<>(currentMessages);
+        messagesListView.setCellFactory(createCellFactory());
 
         ScrollPane scrollPane1 = new ScrollPane(messagesListView);
         scrollPane1.setFitToWidth(true); // Adjust as needed
         scrollPane1.setFitToHeight(true);
-        messagesListView.setPrefHeight(300);
+        messagesListView.setPrefHeight(200);
         //messagesListView.setMouseTransparent(true);
         messagesListView.setFocusTraversable(false);
         
@@ -124,9 +123,11 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         root.setLeft(leftBox);
         root.setCenter(rightBox);
 
+        Scene scene = new Scene(root, 800, 500);
+        scene.getStylesheets().add(getClass().getResource("mystyle.css").toExternalForm());
         // Set up the stage
         primaryStage.setTitle("Chat Client");
-        primaryStage.setScene(new Scene(root, 800, 600));
+        primaryStage.setScene(scene);
         primaryStage.setOnCloseRequest(event -> {
         	Platform.runLater(() -> {
                 chatClient.stop();
@@ -142,6 +143,28 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
             e.printStackTrace();
         }
     }
+    
+    private Callback<ListView<String>, ListCell<String>> createCellFactory() {
+        return listView -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item);
+
+                    // Adjust alignment based on the starting string
+                    if (item.startsWith("Danilo")) {
+                        setStyle("-fx-alignment: center-right;");
+                    } else {
+                        setStyle("-fx-alignment: center-left;");
+                    }
+                }
+            }
+        };
+	}
     
     private void sendMessage() {
         String messageText = messageField.getText().trim();
@@ -240,7 +263,9 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
     }
     
     public void createChatRoom(String roomName) {
-    	chatClient.createChatRoom(roomName);
+    	if(!roomName.isBlank()) {
+    		chatClient.createChatRoom(roomName);
+    	}
     }
 
 
