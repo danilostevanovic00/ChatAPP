@@ -113,21 +113,33 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
                     if (empty || item == null) {
                         setText(null);
                     } else {
-                        setText(item);
+                    	String displayedText = item.substring(0, item.length() - 17);
+                        setText(displayedText);
 
                         if (item.startsWith("Danilo")) {
                             setStyle("-fx-alignment: center-right;");
                         } else {
                             setStyle("-fx-alignment: center-left;");
                         }
-
+/*
                         ContextMenu contextMenu = new ContextMenu();
                         MenuItem editItem = new MenuItem("Edit");
                         editItem.setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
                         editItem.setOnAction(event -> editMessage(item));
                         contextMenu.getItems().add(editItem);
 
-                        setContextMenu(contextMenu);
+                        setContextMenu(contextMenu);*/
+                        
+                        setOnMouseClicked(event -> {
+                            if (item.startsWith("Danilo")) {
+                            	ContextMenu contextMenu = new ContextMenu();
+                                MenuItem editItem = new MenuItem("Edit");
+                                editItem.setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
+                                editItem.setOnAction(event1 -> editMessage(item));
+                                contextMenu.getItems().add(editItem);
+                                setContextMenu(contextMenu);
+                            }
+                        });
                     }
                 }
             };
@@ -149,7 +161,7 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         Scene scene = new Scene(root, 800, 500);
         scene.getStylesheets().add(getClass().getResource("mystyle.css").toExternalForm());
         
-        primaryStage.setTitle("Chat Client");
+        primaryStage.setTitle("DeniChatApp");
         primaryStage.setScene(scene);
         primaryStage.setOnCloseRequest(event -> {
         	Platform.runLater(() -> {
@@ -174,11 +186,14 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
 
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(newMessage -> {
-            int index = currentMessages.indexOf(originalMessage);
-            if (index != -1) {
-                currentMessages.set(index, newMessage);
-            }
+        	if (newMessage!=originalMessage) {
+            	sendEditMessageToServer(newMessage,originalMessage,listView.getSelectionModel().getSelectedItem(),chatClient.userName);
+        	}
         });
+    }
+    
+    private void sendEditMessageToServer(String newMessage, String originalMessage,String recipient,String sender) {
+    	chatClient.sendEditedMessage(newMessage, originalMessage,recipient, sender);
     }
     
     private Callback<ListView<String>, ListCell<String>> createCellFactory() {
@@ -190,7 +205,8 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
                     setText(null);
                     setGraphic(null);
                 } else {
-                    setText(item);
+                	String displayedText = item.substring(0, item.length() - 18);
+                    setText(displayedText);
 
                     if (item.startsWith("Danilo")) {
                         setStyle("-fx-alignment: center-right;");
@@ -220,7 +236,7 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
     public void onRecivedListOfEntity(String[] result) {
         Platform.runLater(() -> {
             Arrays.stream(result)
-                    .filter(element -> !usersAndRooms.contains(element))
+                    .filter(element -> !usersAndRooms.contains(element) && (element!=chatClient.userName))
                     .forEach(usersAndRooms::add);
         });
     }
@@ -244,13 +260,13 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
                 .forEach(currentMessages::add);
         		String first = result[0].getRecipient();
         		String second = result[0].getUser();
-        		if (first == chatClient.userName) {
+        		if (first == listView.getSelectionModel().getSelectedItem()) {
         			int index = usersAndRooms.indexOf(first);
 
                     if (index != -1) {
                         listView.getSelectionModel().select(index);
                     }
-        		}else {
+        		}else if(second==listView.getSelectionModel().getSelectedItem()) {
         			int index = usersAndRooms.indexOf(second);
 
                     if (index != -1) {
@@ -270,7 +286,7 @@ public class Main extends Application implements ChatClientObserver, ChatClientM
         	String[] messages = new String[result.length];
         	int i = 0;
         	for (ChatRoomMessage crm: result) {
-        		messages[i] = crm.getUser()+": "+crm.getMessage();
+        		messages[i] = crm.getUser()+": "+crm.getMessage()+"    -"+crm.getTimestamp();
         		i++;
         	}
         	System.out.println(messages);

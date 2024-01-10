@@ -24,6 +24,7 @@ import rs.raf.pds.v4.z5.messages.AllPrivateMessage;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
+import rs.raf.pds.v4.z5.messages.EditChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.GetMoreMessagesMesage;
 import rs.raf.pds.v4.z5.messages.InfoMessage;
 import rs.raf.pds.v4.z5.messages.InviteToRoomMessage;
@@ -247,6 +248,10 @@ public class ChatClient implements Runnable{
 	    //addMessage(privateMessage);
 	    client.sendTCP(privateMessage);
 	}
+	
+	public void sendEditedMessage(String newMessage, String originalMessage,String recipient,String sender) {
+    	client.sendTCP(new EditChatRoomMessage(newMessage,originalMessage,recipient, sender));
+    }
 	public void sendRoomMessage(String roomName, String text) {
 		ChatRoomMessage chatRoomMessage = new ChatRoomMessage(userName,roomName, text);
 	    //addMessage(privateMessage);

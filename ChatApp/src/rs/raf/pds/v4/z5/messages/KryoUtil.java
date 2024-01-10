@@ -26,5 +26,6 @@ public class KryoUtil {
 		kryo.register(AllPrivateMessage.class);
 		kryo.register(AllChatMessage.class);
 		kryo.register(RequestPrivateMessage.class);
+		kryo.register(EditChatRoomMessage.class);
 	}
 }

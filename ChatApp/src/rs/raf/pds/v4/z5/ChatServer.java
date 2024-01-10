@@ -19,6 +19,7 @@ import rs.raf.pds.v4.z5.messages.AllPrivateMessage;
 import rs.raf.pds.v4.z5.messages.ChatMessage;
 import rs.raf.pds.v4.z5.messages.ChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.CreateRoomMessage;
+import rs.raf.pds.v4.z5.messages.EditChatRoomMessage;
 import rs.raf.pds.v4.z5.messages.GetMoreMessagesMesage;
 import rs.raf.pds.v4.z5.messages.PrivateMessage;
 import rs.raf.pds.v4.z5.messages.RequestPrivateMessage;
@@ -109,6 +110,62 @@ public class ChatServer implements Runnable{
 						connection.sendTCP(new ListAllFromRoom(getAllRoomMessages(requestPrivateMessage.getReciver())));
 					}else {
 						connection.sendTCP(new AllPrivateMessage(getAllPrivateMessages(requestPrivateMessage)));
+					}
+				    return;
+				}
+				
+				if (object instanceof EditChatRoomMessage) {
+					EditChatRoomMessage editChatRoomMessage = (EditChatRoomMessage) object;
+					boolean flag = true;
+					String recipient = editChatRoomMessage.getRecipient();
+					String sender = editChatRoomMessage.getSender();
+					String last13Chars = editChatRoomMessage.getNewMessage().substring(editChatRoomMessage.getNewMessage().length() - 13);
+					if (recipient.equals(recipient.toUpperCase()) && flag) {
+						ArrayList<ChatRoomMessage> currrentRoomsMessages = chatRoomsMessages.get(recipient);
+						for (ChatRoomMessage roomMessage : currrentRoomsMessages) {
+						    String timestamp = String.valueOf(roomMessage.getTimestamp());
+
+						    
+						    if (last13Chars.equals(timestamp)) {
+						    	roomMessage.setMessage(editChatRoomMessage.getNewMessage().split(":")[1].substring(0, editChatRoomMessage.getNewMessage().split(":")[1].length() - 18)+" Ed");
+						    	for (Connection conn: chatRooms.get(roomMessage.getRoomName()).getUserConnectionMap().values()) {
+									if (conn.isConnected())
+										conn.sendTCP(new ListAllFromRoom(getAllRoomMessages(roomMessage.getRoomName())));
+								}
+						    	flag = false;
+						        break; 
+						    }
+						}
+						
+					}else if (flag) {
+						ArrayList<PrivateMessage> senderPrivateMessages = privateMessages.get(sender);	
+						ArrayList<PrivateMessage> recipientPrivateMessages = privateMessages.get(recipient);
+						for (PrivateMessage pm :senderPrivateMessages) {
+							String timestamp = String.valueOf(pm.getTimestamp());
+
+						    
+						    if (last13Chars.equals(timestamp)) {
+						    	pm.setTxt(editChatRoomMessage.getNewMessage().split(":")[1].substring(0, editChatRoomMessage.getNewMessage().split(":")[1].length() - 18)+" Ed");
+						    	AllPrivateMessage allPrivateMessage = new AllPrivateMessage(getAllPrivateMessages(new RequestPrivateMessage(sender,recipient)));
+						    	connection.sendTCP(allPrivateMessage);
+						    	userConnectionMap.get(recipient).sendTCP(allPrivateMessage);
+						    	flag = false;
+						        break; 
+						    }
+						}
+						for (PrivateMessage pm :recipientPrivateMessages) {
+							String timestamp = String.valueOf(pm.getTimestamp());
+
+						    
+						    if (last13Chars.equals(timestamp)) {
+						    	pm.setTxt(editChatRoomMessage.getNewMessage().split(":")[1].substring(0, editChatRoomMessage.getNewMessage().split(":")[1].length() - 18)+" Ed");
+						    	AllPrivateMessage allPrivateMessage = new AllPrivateMessage(getAllPrivateMessages(new RequestPrivateMessage(sender,recipient)));
+						    	connection.sendTCP(allPrivateMessage);
+						    	userConnectionMap.get(recipient).sendTCP(allPrivateMessage);
+						    	flag = false;
+						        break; 
+						    }
+						}
 					}
 				    return;
 				}
@@ -291,6 +348,8 @@ public class ChatServer implements Runnable{
 	        privateAllMessages[i] = pm;
 	        i++;
 	    }
+	    
+	    Arrays.sort(privateAllMessages, Comparator.comparingLong(PrivateMessage::getTimestamp));
 
 	    System.out.println("Private messages found: " + Arrays.toString(privateAllMessages));
 	    return privateAllMessages;

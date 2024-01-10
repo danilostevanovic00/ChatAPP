@@ -24,6 +24,10 @@ public class PrivateMessage {
 		return txt;
 	}
 	
+	public void setTxt(String newTxt) {
+		this.txt = newTxt;
+	}
+	
 	public String getRecipient() {
 		return this.recipient;
 	}

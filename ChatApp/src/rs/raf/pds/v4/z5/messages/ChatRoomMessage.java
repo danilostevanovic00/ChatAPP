@@ -4,6 +4,7 @@ public class ChatRoomMessage {
 	String user;
 	String roomName;
 	String message;
+	long timestamp= System.currentTimeMillis();
 	
 	protected ChatRoomMessage() {
 	}
@@ -18,11 +19,19 @@ public class ChatRoomMessage {
 		return this.message;
 	}
 	
+	public void setMessage(String message) {
+		this.message = message;
+	}
+	
 	public String getRoomName() {
 		return this.roomName;
 	}
 	
 	public String getUser() {
 		return this.user;
+	}
+	
+	public long getTimestamp() {
+		return this.timestamp;
 	}
 }
